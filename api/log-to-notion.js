@@ -1,8 +1,13 @@
-import { Client } from "@notionhq/client";
+// api/log-to-notion.js
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+const { Client } = require("@notionhq/client");
 
-export default async function handler(req, res) {
+// Initialize Notion client
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+});
+
+module.exports = async (req, res) => {
   try {
     console.log("Testing Notion connection...");
 
@@ -22,4 +27,4 @@ export default async function handler(req, res) {
       details: error.body || error,
     });
   }
-}
+};
