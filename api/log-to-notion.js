@@ -1,17 +1,12 @@
 // api/log-to-notion.js
+
 const { Client } = require("@notionhq/client");
 
 module.exports = async (req, res) => {
   try {
-    console.log("🟢 Initializing Notion client...");
+    console.log("🟢 Connecting to Notion...");
     const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-    // Sanity check
-    if (!notion.databases || !notion.databases.query) {
-      throw new Error("⚠️ Notion client is not properly initialized");
-    }
-
-    console.log("🟢 Running test query...");
     const response = await notion.databases.query({
       database_id: process.env.NOTION_DATABASE_ID,
     });
