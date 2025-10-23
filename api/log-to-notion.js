@@ -1,17 +1,20 @@
-// api/log-to-notion.js
+import { Client } from "@notionhq/client";
 
-const { Client } = require("@notionhq/client");
+const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
-    console.log("🟢 Connecting to Notion...");
-    const notion = new Client({ auth: process.env.NOTION_TOKEN });
+    console.log("Testing Notion connection...");
+    console.log("🧩 Available Notion methods:", Object.keys(notion.databases || {}));
 
     const response = await notion.databases.query({
       database_id: process.env.NOTION_DATABASE_ID,
     });
 
-    res.status(200).json({ success: true, results: response.results });
+    res.status(200).json({
+      success: true,
+      results: response.results,
+    });
   } catch (error) {
     console.error("🔴 Notion API Error:", error);
     res.status(500).json({
@@ -20,4 +23,4 @@ module.exports = async (req, res) => {
       details: error.body || error,
     });
   }
-};
+}
