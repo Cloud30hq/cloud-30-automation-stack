@@ -1,7 +1,13 @@
 {
+  "name": "cloud-30-automation-stack",
+  "version": "1.0.0",
+  "type": "module",
   "dependencies": {
     "@notionhq/client": "^5.3.0",
+    "googleapis": "^164.1.0",
     "nodemailer": "^7.0.9"
   },
-  "type": "module"
+  "scripts": {
+    "dev": "node api/log-to-notion.js"
+  }
 }
