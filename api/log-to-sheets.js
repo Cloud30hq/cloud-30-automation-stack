@@ -1,19 +1,21 @@
 import { google } from "googleapis";
-import fs from "fs";
 
 export default async function handler(req, res) {
   try {
+    // Parse credentials directly from environment variable
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+
     const auth = new google.auth.GoogleAuth({
-      credentials: JSON.parse(
-        fs.readFileSync("./service-account.json", "utf8")
-      ),
+      credentials,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
     const sheets = google.sheets({ version: "v4", auth });
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
-    const values = [["Name", "Email", "Message", new Date().toISOString()]]; // Example data
+    const values = [
+      ["Name", "Email", "Message", new Date().toISOString()] // Example data
+    ];
 
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
@@ -24,11 +26,11 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       success: true,
-      message: "Data logged to Google Sheet successfully",
-      response,
+      message: "✅ Data logged to Google Sheet successfully",
+      response: response.data,
     });
   } catch (error) {
-    console.error("Google Sheets API Error:", error);
+    console.error("❌ Google Sheets API Error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
