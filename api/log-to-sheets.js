@@ -3,7 +3,8 @@ import { google } from "googleapis";
 export default async function handler(req, res) {
   try {
     // Parse credentials directly from environment variable
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 
     const auth = new google.auth.GoogleAuth({
       credentials,
