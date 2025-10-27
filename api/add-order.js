@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     // Append the order to your Orders sheet
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Orders!A:J",
+      range: "Order logs!A:J",
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [orderRow] },
     });
