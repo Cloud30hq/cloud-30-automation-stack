@@ -3,105 +3,74 @@ import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+    return res.status(405).json({ success: false, message: "Method not allowed" });
   }
 
   try {
-    const { orderId, amountPaid, paymentMethod, reference, payerName, notes } = req.body;
+    // Extract payment data
+    const {
+      orderId,
+      amount,
+      method,
+      status,
+      customerName,
+      email,
+      phone,
+      transactionId,
+      reference,
+    } = req.body;
 
-    // Validate required fields
-    if (!orderId || !amountPaid || !paymentMethod || !payerName) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: orderId, amountPaid, paymentMethod, payerName",
-      });
-    }
+    const timestamp = new Date().toLocaleString();
 
-    // Set up Google auth
-    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    // Authenticate Google Service Account
     const auth = new google.auth.GoogleAuth({
-      credentials,
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
+
     const sheets = google.sheets({ version: "v4", auth });
 
-    const sheetId = process.env.GOOGLE_SHEET_ID;
+    // ✅ Use same spreadsheet ID already in use for Orders
+    const spreadsheetId = process.env.SPREADSHEET_ID;
 
-    // Fetch Orders sheet to check for matching order
-    const orderResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: "Orders!A:J",
-    });
+    // ✅ Use new sheet tab for payments (same structure logic)
+    const range = "Payment logs!A:J"; // must match the actual sheet tab name in Google Sheets
 
-    const orders = orderResponse.data.values || [];
-    const orderHeader = orders[0];
-    const orderRows = orders.slice(1);
-
-    const orderIndex = orderRows.findIndex(row => row[0] === orderId);
-
-    if (orderIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: `Order with ID ${orderId} not found`,
-      });
-    }
-
-    const orderRow = orderRows[orderIndex];
-    const orderPrice = parseFloat(orderRow[3]);
-    const paidAmount = parseFloat(amountPaid);
-
-    // Check if payment covers full price
-    const verified = paidAmount >= orderPrice ? "TRUE" : "FALSE";
-
-    // Create a payment record
-    const paymentId = `PAY-${uuidv4().split("-")[0].toUpperCase()}`;
-    const datePaid = new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos" });
-
-    const paymentRow = [
-      paymentId,
-      orderId,
-      amountPaid,
-      paymentMethod,
+    // Prepare new payment record
+    const newRow = [
+      orderId || `ORD-${uuidv4().slice(0, 8).toUpperCase()}`,
+      amount,
+      method,
+      status,
+      customerName,
+      email,
+      phone,
+      transactionId || "-",
       reference || "-",
-      payerName,
-      datePaid,
-      verified,
-      notes || "",
-      "System",
+      timestamp,
     ];
 
-    // Append payment to Payments sheet
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: "Payments!A:J",
+    // Append payment record to the sheet
+    const response = await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range,
       valueInputOption: "USER_ENTERED",
-      requestBody: { values: [paymentRow] },
+      resource: {
+        values: [newRow],
+      },
     });
-
-    // If verified, update order status in Orders sheet
-    if (verified === "TRUE") {
-      const orderRowNumber = orderIndex + 2; // account for header row
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: sheetId,
-        range: `Orders!E${orderRowNumber}`, // Column E = status
-        valueInputOption: "USER_ENTERED",
-        requestBody: { values: [["Paid"]] },
-      });
-    }
 
     res.status(200).json({
       success: true,
       message: "✅ Payment logged successfully",
-      paymentId,
-      verified,
+      data: response.data,
     });
-
   } catch (error) {
-    console.error("❌ Error adding payment:", error);
+    console.error("Error adding payment:", error);
     res.status(500).json({
       success: false,
       message: "Failed to add payment",
-      error: error.message || error,
+      error: error.message,
     });
   }
 }
