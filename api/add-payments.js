@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     const sheets = google.sheets({ version: "v4", auth });
 
     // ✅ Use same spreadsheet ID already in use for Orders
-    const spreadsheetId = process.env.SPREADSHEET_ID;
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
     // ✅ Use new sheet tab for payments (same structure logic)
     const range = "Payment logs!A:J"; // must match the actual sheet tab name in Google Sheets
