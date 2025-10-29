@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     // Fetch order details
     const orderSheet = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Order logs!A:J",
+      range: "Order-log!A:J",
     });
 
     const rows = orderSheet.data.values;
