@@ -12,6 +12,8 @@ export default async function handler(req, res) {
   try {
     const { orderId } = req.body;
 
+    console.log("🧾 Starting invoice generation for:", req.body);
+
     if (!orderId) {
       return res.status(400).json({
         success: false,
@@ -98,7 +100,7 @@ export default async function handler(req, res) {
     // Log in "Invoice Logs" sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Invoice Logs!A:H",
+      range: "InvoiceLogs!A:H",
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [
