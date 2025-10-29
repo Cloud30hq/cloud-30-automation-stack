@@ -58,7 +58,7 @@ export default async function handler(req, res) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: "Payment logs!A:G",
+      range: "Payments!A:G",
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [paymentRow] },
     });
