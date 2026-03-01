@@ -51,7 +51,10 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       category,
       searchLocation,
       searchId,
-      source
+      source,
+      whatsappLink = "",
+      contacted = "NO",
+      response: outreachResponse = ""
     } = req.body;
 
     let leadLogged = false;
@@ -77,14 +80,17 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       searchLocation || "",
       searchId || "",
       new Date().toISOString(),
-      source || ""
+      source || "",
+      whatsappLink || "",
+      contacted || "NO",
+      outreachResponse || ""
     ]];
 
     leadLogged = true;
 
-    const response = await sheets.spreadsheets.values.append({
+    const appendResponse = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: "Leads!A:J",
+      range: "Leads!A:M",
       valueInputOption: "RAW",
       requestBody: { values },
     });
@@ -109,7 +115,7 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
     res.status(200).json({
       success: true,
       message: "✅ Data logged to Google Sheet successfully",
-      response: response.data,
+      response: appendResponse.data,
     });
   } catch (error) {
     console.error("❌ Google Sheets API Error:", error);
