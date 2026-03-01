@@ -34,6 +34,14 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
+    // Read existing leads for duplicate detection
+    const existingData = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: "Leads!C:C", // Column C = Phone
+    });
+
+    const existingPhones = existingData.data.values?.flat() || [];
+
     const {
       businessName,
       area,
@@ -47,6 +55,15 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
     } = req.body;
 
     const normalizedPhone = normalizePhone(phone);
+
+    // Duplicate detection
+    if (existingPhones.includes(normalizedPhone)) {
+      return res.status(200).json({
+        success: true,
+        message: "⚠ Duplicate lead skipped",
+        phone: normalizedPhone,
+      });
+    }
 
     const values = [[
       businessName || "",
