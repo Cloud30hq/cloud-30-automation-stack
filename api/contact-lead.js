@@ -16,8 +16,14 @@ function normalizePhone(phone) {
   return cleaned;
 }
 
+function firstParam(value) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  if (req.method !== "POST" && req.method !== "GET") {
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({
       success: false,
       message: "Method not allowed",
@@ -36,13 +42,13 @@ export default async function handler(req, res) {
     const sheets = google.sheets({ version: "v4", auth });
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
-    const {
-      phone,
-      searchId,
-      whatsappLink = "",
-      contacted = "NO",
-      response = "",
-    } = req.body || {};
+    const payload = req.method === "GET" ? (req.query || {}) : (req.body || {});
+
+    const phone = firstParam(payload.phone);
+    const searchId = firstParam(payload.searchId);
+    const whatsappLink = firstParam(payload.whatsappLink) || "";
+    const contacted = firstParam(payload.contacted) || "NO";
+    const response = firstParam(payload.response) || "";
 
     if (!phone && !searchId) {
       return res.status(400).json({
