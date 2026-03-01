@@ -1,5 +1,24 @@
 import { google } from "googleapis";
 
+// Normalize Nigerian phone numbers
+function normalizePhone(phone) {
+  if (!phone) return "";
+
+  // Remove spaces and symbols
+  let cleaned = phone.replace(/[^0-9]/g, "");
+
+  // Convert formats to +234XXXXXXXXXX
+  if (cleaned.startsWith("0")) {
+    cleaned = "234" + cleaned.substring(1);
+  }
+
+  if (cleaned.startsWith("234")) {
+    cleaned = "+" + cleaned;
+  }
+
+  return cleaned;
+}
+
 export default async function handler(req, res) {
   try {
     // Parse credentials directly from environment variable
@@ -27,10 +46,12 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       source
     } = req.body;
 
+    const normalizedPhone = normalizePhone(phone);
+
     const values = [[
       businessName || "",
       area || "",
-      phone || "",
+      normalizedPhone || "",
       websiteStatus || "",
       evidence || "",
       category || "",
