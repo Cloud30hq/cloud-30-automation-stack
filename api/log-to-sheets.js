@@ -54,6 +54,8 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       source
     } = req.body;
 
+    let leadLogged = false;
+
     const normalizedPhone = normalizePhone(phone);
 
     // Duplicate detection
@@ -78,12 +80,31 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       source || ""
     ]];
 
+    leadLogged = true;
+
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
       range: "Leads!A:J",
       valueInputOption: "RAW",
       requestBody: { values },
     });
+
+    if (leadLogged) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId,
+        range: "SearchHistory!A:E",
+        valueInputOption: "RAW",
+        requestBody: {
+          values: [[
+            searchId || "",
+            category || "",
+            searchLocation || "",
+            1,
+            new Date().toISOString(),
+          ]],
+        },
+      });
+    }
 
     res.status(200).json({
       success: true,
