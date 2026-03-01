@@ -21,6 +21,12 @@ function firstParam(value) {
   return value;
 }
 
+function buildContactLeadLink(normalizedPhone) {
+  const phoneWithoutPlus = String(normalizedPhone || "").replace(/\+/g, "").trim();
+  if (!phoneWithoutPlus || !phoneWithoutPlus.startsWith("234")) return "";
+  return `https://cloud-30-automation-stack.vercel.app/api/contact-lead?phone=${phoneWithoutPlus}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST" && req.method !== "GET") {
     res.setHeader("Allow", "GET, POST");
@@ -46,9 +52,8 @@ export default async function handler(req, res) {
 
     const phone = firstParam(payload.phone);
     const searchId = firstParam(payload.searchId);
-    const whatsappLink = firstParam(payload.whatsappLink) || "";
-    const contacted = firstParam(payload.contacted) || "NO";
-    const response = firstParam(payload.response) || "";
+    const contacted = firstParam(payload.contacted);
+    const contactedDate = firstParam(payload.contactedDate ?? payload.response);
 
     if (!phone && !searchId) {
       return res.status(400).json({
@@ -75,6 +80,7 @@ export default async function handler(req, res) {
 
     // Row 1 is assumed to be headers, so updates start from row 2.
     let targetRow = -1;
+    let targetRowPhone = "";
 
     for (let i = 1; i < rows.length; i += 1) {
       const row = rows[i] || [];
@@ -86,6 +92,7 @@ export default async function handler(req, res) {
 
       if (phoneMatch || searchIdMatch) {
         targetRow = i + 1; // Sheets are 1-indexed
+        targetRowPhone = row[2] || "";
         break;
       }
     }
@@ -97,15 +104,22 @@ export default async function handler(req, res) {
       });
     }
 
+    const linkPhone = normalizePhone(phone || targetRowPhone);
+    const whatsappLink = buildContactLeadLink(linkPhone);
+    const contactedValue = contacted || "YES";
+    const contactedDateValue = (contactedDate && String(contactedDate).trim())
+      ? String(contactedDate).trim()
+      : new Date().toISOString();
+
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range: `Leads!K${targetRow}:M${targetRow}`,
       valueInputOption: "RAW",
       requestBody: {
         values: [[
-          whatsappLink || "",
-          contacted || "NO",
-          response || "",
+          whatsappLink,
+          contactedValue,
+          contactedDateValue,
         ]],
       },
     });
@@ -116,6 +130,9 @@ export default async function handler(req, res) {
       row: targetRow,
       phone: normalizedPhone || null,
       searchId: searchId || null,
+      whatsappLink,
+      contacted: contactedValue,
+      contactedDate: contactedDateValue,
     });
   } catch (error) {
     console.error("contact-lead API error:", error);

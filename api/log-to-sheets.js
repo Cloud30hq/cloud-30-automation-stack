@@ -19,6 +19,12 @@ function normalizePhone(phone) {
   return cleaned;
 }
 
+function buildContactLeadLink(normalizedPhone) {
+  const phoneWithoutPlus = String(normalizedPhone || "").replace(/\+/g, "").trim();
+  if (!phoneWithoutPlus || !phoneWithoutPlus.startsWith("234")) return "";
+  return `https://cloud-30-automation-stack.vercel.app/api/contact-lead?phone=${phoneWithoutPlus}`;
+}
+
 export default async function handler(req, res) {
   try {
     // Parse credentials directly from environment variable
@@ -51,15 +57,15 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       category,
       searchLocation,
       searchId,
-      source,
-      whatsappLink = "",
-      contacted = "NO",
-      response: outreachResponse = ""
+      source
     } = req.body;
 
     let leadLogged = false;
 
     const normalizedPhone = normalizePhone(phone);
+    const whatsappLink = buildContactLeadLink(normalizedPhone);
+    const contacted = "NO";
+    const contactedDate = "";
 
     // Duplicate detection
     if (existingPhones.includes(normalizedPhone)) {
@@ -82,8 +88,8 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       new Date().toISOString(),
       source || "",
       whatsappLink || "",
-      contacted || "NO",
-      outreachResponse || ""
+      contacted,
+      contactedDate
     ]];
 
     leadLogged = true;
