@@ -14,13 +14,35 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
     const sheets = google.sheets({ version: "v4", auth });
 
     const sheetId = process.env.GOOGLE_SHEET_ID;
-    const values = [
-      ["Name", "Email", "Message", new Date().toISOString()] // Example data
-    ];
+
+    const {
+      businessName,
+      area,
+      phone,
+      websiteStatus,
+      evidence,
+      category,
+      searchLocation,
+      searchId,
+      source
+    } = req.body;
+
+    const values = [[
+      businessName || "",
+      area || "",
+      phone || "",
+      websiteStatus || "",
+      evidence || "",
+      category || "",
+      searchLocation || "",
+      searchId || "",
+      new Date().toISOString(),
+      source || ""
+    ]];
 
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: "Sheet1!A:D",
+      range: "Leads!A:J",
       valueInputOption: "RAW",
       requestBody: { values },
     });
