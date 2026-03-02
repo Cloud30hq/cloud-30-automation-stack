@@ -1,11 +1,12 @@
 import { google } from "googleapis";
+import { verifyWhatsAppCompatibility } from "../lib/whatsapp-verification.js";
 
 // Normalize Nigerian phone numbers
 function normalizePhone(phone) {
   if (!phone) return "";
 
   // Remove spaces and symbols
-  let cleaned = phone.replace(/[^0-9]/g, "");
+  let cleaned = String(phone).replace(/[^0-9]/g, "");
 
   // Convert formats to +234XXXXXXXXXX
   if (cleaned.startsWith("0")) {
@@ -26,10 +27,18 @@ function buildContactLeadLink(normalizedPhone) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({
+      success: false,
+      message: "Method not allowed",
+    });
+  }
+
   try {
     // Parse credentials directly from environment variable
-   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT || "{}");
+    credentials.private_key = (credentials.private_key || "").replace(/\\n/g, "\n");
 
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -48,6 +57,8 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
 
     const existingPhones = existingData.data.values?.flat() || [];
 
+    const payload = req.body || {};
+
     const {
       businessName,
       area,
@@ -58,14 +69,41 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       searchLocation,
       searchId,
       source
-    } = req.body;
+    } = payload;
 
     let leadLogged = false;
-
-    const normalizedPhone = normalizePhone(phone);
-    const whatsappLink = buildContactLeadLink(normalizedPhone);
     const contacted = "NO";
     const contactedDate = "";
+
+    if (String(websiteStatus || "").trim().toUpperCase() !== "NO") {
+      return res.status(422).json({
+        success: false,
+        message: "Lead skipped: website status is not NO",
+        reason: "website_status_not_no",
+        logged: false,
+      });
+    }
+
+    const verification = await verifyWhatsAppCompatibility(phone, {
+      mode: "HYBRID",
+    });
+
+    const normalizedPhone = verification.normalized?.e164 || normalizePhone(phone);
+    const whatsappLink = buildContactLeadLink(normalizedPhone);
+
+    if (verification.whatsappCompatible !== "YES") {
+      return res.status(422).json({
+        success: false,
+        message: "Lead skipped: WhatsApp incompatible",
+        reason: verification.verificationEvidence,
+        whatsappCompatible: verification.whatsappCompatible,
+        verificationMethod: verification.verificationMethod,
+        verificationHttpCode: verification.verificationHttpCode,
+        verificationEvidence: verification.verificationEvidence,
+        verificationCheckedAt: verification.verificationCheckedAt,
+        logged: false,
+      });
+    }
 
     // Duplicate detection
     if (existingPhones.includes(normalizedPhone)) {
@@ -73,6 +111,12 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
         success: true,
         message: "⚠ Duplicate lead skipped",
         phone: normalizedPhone,
+        whatsappCompatible: verification.whatsappCompatible,
+        verificationMethod: verification.verificationMethod,
+        verificationHttpCode: verification.verificationHttpCode,
+        verificationEvidence: verification.verificationEvidence,
+        verificationCheckedAt: verification.verificationCheckedAt,
+        logged: false,
       });
     }
 
@@ -89,14 +133,19 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       source || "",
       whatsappLink || "",
       contacted,
-      contactedDate
+      contactedDate,
+      verification.whatsappCompatible,
+      verification.verificationMethod,
+      verification.verificationCheckedAt,
+      String(verification.verificationHttpCode || 0),
+      verification.verificationEvidence
     ]];
 
     leadLogged = true;
 
     const appendResponse = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: "Leads!A:M",
+      range: "Leads!A:R",
       valueInputOption: "RAW",
       requestBody: { values },
     });
@@ -122,6 +171,12 @@ credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
       success: true,
       message: "✅ Data logged to Google Sheet successfully",
       response: appendResponse.data,
+      whatsappCompatible: verification.whatsappCompatible,
+      verificationMethod: verification.verificationMethod,
+      verificationHttpCode: verification.verificationHttpCode,
+      verificationEvidence: verification.verificationEvidence,
+      verificationCheckedAt: verification.verificationCheckedAt,
+      logged: true,
     });
   } catch (error) {
     console.error("❌ Google Sheets API Error:", error);
